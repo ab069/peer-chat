@@ -1,101 +1,125 @@
-import Image from "next/image";
+"use client";
+import useWebRTC from "./hooks/useWebRTC";
+import { useState } from "react";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const { startCall, createOffer, submitAnswer, acceptOffer, toggleCamera, toggleMic, toggleScreenSharing, endCall, localStreams, remoteStreams, encodedOffer, encodedAnswer, isCameraOn, isMicOn, isScreenSharing } = useWebRTC();
+  const [offerText, setOfferText] = useState<string>("");
+  const [answerText, setAnswerText] = useState<string>("");
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // Function to copy text to clipboard
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      alert("Copied to clipboard!");
+    });
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">
+      <h1 className="text-3xl font-bold mb-4">WebRTC Peer-to-Peer Chat</h1>
+
+      {/* Buttons for Call Controls */}
+      <div className="flex space-x-4 mb-4">
+        <button onClick={startCall} className="p-2 bg-green-500 rounded">Start Call</button>
+        <button onClick={toggleCamera} className="p-2 bg-blue-500 rounded">
+          {isCameraOn ? "Turn Camera Off" : "Turn Camera On"}
+        </button>
+        <button onClick={toggleMic} className="p-2 bg-yellow-500 rounded">
+          {isMicOn ? "Mute Mic" : "Unmute Mic"}
+        </button>
+        <button onClick={toggleScreenSharing} className="p-2 bg-orange-500 rounded">
+          {isScreenSharing ? "Stop Sharing Screen" : "Share Screen"}
+        </button>
+        <button onClick={createOffer} className="p-2 bg-purple-500 rounded">Create Offer</button>
+        <button onClick={() => acceptOffer(offerText)} className="p-2 bg-pink-500 rounded">Accept Offer</button>
+        <button onClick={() => submitAnswer(answerText)} className="p-2 bg-indigo-500 rounded">Submit Answer</button>
+        <button onClick={endCall} className="p-2 bg-red-500 rounded">End Call</button>
+      </div>
+
+      {/* Offer & Answer Exchange */}
+      <div className="w-full max-w-lg">
+        <div className="mb-4 flex items-center">
+          <label className="block mb-2 mr-2">Offer (Copy and Share)</label>
+          <button 
+            onClick={() => copyToClipboard(encodedOffer || '')} 
+            className="p-2 bg-gray-600 rounded text-sm">
+            Copy
+          </button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+        <textarea
+          className="w-80 p-2 bg-gray-800 rounded"
+          value={encodedOffer || ""}
+          readOnly
+        />
+      </div>
+
+      <div className="mb-4 flex items-center">
+        <label className="block mb-2 mr-2">Paste Offer (From Other Tab)</label>
+        <button 
+          onClick={() => copyToClipboard(offerText)} 
+          className="p-2 bg-gray-600 rounded text-sm">
+          Copy
+        </button>
+      </div>
+      <textarea
+        className="w-80 p-2 bg-gray-800 rounded"
+        value={offerText}
+        onChange={(e) => setOfferText(e.target.value)}
+      />
+
+      <div className="mb-4 flex items-center">
+        <label className="block mb-2 mr-2">Answer (Copy and Share)</label>
+        <button 
+          onClick={() => copyToClipboard(encodedAnswer || '')} 
+          className="p-2 bg-gray-600 rounded text-sm">
+          Copy
+        </button>
+      </div>
+      <textarea
+        className="w-80 p-2 bg-gray-800 rounded"
+        value={encodedAnswer || ""}
+        readOnly
+      />
+
+      <div className="mb-4 flex items-center">
+        <label className="block mb-2 mr-2">Paste Answer (From Other Tab)</label>
+        <button 
+          onClick={() => copyToClipboard(answerText)} 
+          className="p-2 bg-gray-600 rounded text-sm">
+          Copy
+        </button>
+      </div>
+      <textarea
+        className="w-80 p-2 bg-gray-800 rounded"
+        value={answerText}
+        onChange={(e) => setAnswerText(e.target.value)}
+      />
+
+      {/* Displaying Local and Remote Streams */}
+      <div className="grid grid-cols-2 gap-4">
+        {localStreams.map((stream, index) => (
+          <video
+            key={`local-${index}`}
+            ref={(vid) => {
+              if (vid) vid.srcObject = stream;
+            }}
+            autoPlay
+            muted
+            className="border rounded-lg w-64 h-48"
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+        ))}
+        {remoteStreams.map((stream, index) => (
+          <video
+            key={`remote-${index}`}
+            ref={(vid) => {
+              if (vid) vid.srcObject = stream;
+            }}
+            autoPlay
+            playsInline
+            className="border rounded-lg w-64 h-48"
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        ))}
+      </div>
     </div>
   );
 }
