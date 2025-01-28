@@ -1,171 +1,168 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 
 export default function useWebRTC() {
-  const [localStreams, setLocalStreams] = useState<MediaStream[]>([]);
-  const [remoteStreams, setRemoteStreams] = useState<MediaStream[]>([]);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [encodedOffer, setEncodedOffer] = useState<string | null>(null);
   const [encodedAnswer, setEncodedAnswer] = useState<string | null>(null);
-  const [isCameraOn, setIsCameraOn] = useState(true);
-  const [isMicOn, setIsMicOn] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [isMicOn, setIsMicOn] = useState(true); // Track microphone status
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
 
-  // Base64 encode and decode for offer/answer exchange
-  const base64Encode = (data: string) => btoa(data);
-  const base64Decode = (data: string) => atob(data);
+  const base64Encode = (data: string) => btoa(unescape(encodeURIComponent(data)));
+  const base64Decode = (data: string) => decodeURIComponent(escape(atob(data)));
 
-  // Start the call
   const startCall = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    setLocalStreams((prevStreams) => [...prevStreams, stream]); // Add new stream to localStreams array
-  
-    peerConnection.current = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-    });
-  
-    // Add local stream tracks to the peer connection
-    stream.getTracks().forEach((track) => peerConnection.current?.addTrack(track, stream));
-  
-    // Handle ICE candidates
-    peerConnection.current.onicecandidate = (event) => {
-      if (event.candidate) {
-        console.log("ICE candidate:", event.candidate);
-        // Send ICE candidate to the remote peer
-      }
-    };
-  
-    // Handle remote stream
-    peerConnection.current.ontrack = (event) => {
-      console.log("Received remote stream:", event.streams[0]);
-      setRemoteStreams((prevStreams) => [...prevStreams, event.streams[0]]); // Add new remote stream
-    };
+    console.log("📞 Starting Call...");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setLocalStream(stream);
+      setIsCallActive(true);
+
+      peerConnection.current = new RTCPeerConnection({
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      });
+
+      stream.getTracks().forEach((track) => {
+        console.log(`📡 Sending Track: ${track.kind}`, track);
+        peerConnection.current?.addTrack(track, stream);
+      });
+
+      peerConnection.current.ontrack = (event) => {
+        console.log("✅ Received Remote Stream:", event.streams[0]);
+        if (event.streams.length > 0) {
+          console.log("🎥 Remote Stream Tracks:", event.streams[0].getTracks());
+          setRemoteStream(event.streams[0]);
+        }
+      };
+
+      peerConnection.current.onicecandidate = (event) => {
+        if (event.candidate) console.log("🔄 ICE Candidate Generated:", event.candidate);
+      };
+    } catch (error) {
+      console.error("❌ Error Starting Call:", error);
+    }
   };
 
-  // Toggle camera (on/off)
-  const toggleCamera = () => {
-    localStreams.forEach((stream) => {
-      const videoTrack = stream.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        setIsCameraOn(videoTrack.enabled);
-      }
-    });
+  const createOffer = async () => {
+    if (!peerConnection.current) return;
+    try {
+      console.log("📨 Creating Offer...");
+      const offer = await peerConnection.current.createOffer();
+      await peerConnection.current.setLocalDescription(offer);
+      setEncodedOffer(base64Encode(JSON.stringify(offer)));
+      console.log("✅ Offer Created:", offer);
+    } catch (error) {
+      console.error("❌ Error Creating Offer:", error);
+    }
   };
 
-  // Toggle microphone (on/off)
-  const toggleMic = () => {
-    localStreams.forEach((stream) => {
-      const audioTrack = stream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        setIsMicOn(audioTrack.enabled);
-      }
-    });
+  const acceptOffer = async (encodedOffer: string) => {
+    if (!peerConnection.current) return;
+    if (!encodedOffer) {
+      console.error("❌ Error: Offer is empty or invalid");
+      return;
+    }
+
+    try {
+      console.log("📥 Accepting Offer...");
+      const offer = JSON.parse(base64Decode(encodedOffer));
+      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
+
+      const answer = await peerConnection.current.createAnswer();
+      await peerConnection.current.setLocalDescription(answer);
+      setEncodedAnswer(base64Encode(JSON.stringify(answer)));
+
+      console.log("✅ Answer Created:", answer);
+    } catch (error) {
+      console.error("❌ Error Accepting Offer:", error);
+    }
   };
 
-  // Start/stop screen sharing
+  const submitAnswer = async (encodedAnswer: string) => {
+    if (!peerConnection.current) return;
+    if (!encodedAnswer) {
+      console.error("❌ Error: Answer is empty or invalid");
+      return;
+    }
+
+    try {
+      console.log("📤 Submitting Answer...");
+      const answer = JSON.parse(base64Decode(encodedAnswer));
+      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
+      console.log("✅ Answer Submitted:", answer);
+    } catch (error) {
+      console.error("❌ Error Submitting Answer:", error);
+    }
+  };
+
   const toggleScreenSharing = async () => {
     if (isScreenSharing) {
-      // Stop screen sharing and revert to camera
-      const tracks = screenStreamRef.current?.getTracks();
-      tracks?.forEach((track) => track.stop());
-
+      screenStreamRef.current?.getTracks().forEach(track => track.stop());
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      setLocalStreams((prevStreams) => [...prevStreams, stream]); // Add new stream to localStreams
+      setLocalStream(stream);
+      peerConnection.current?.getSenders().find((s) => s.track?.kind === "video")?.replaceTrack(stream.getVideoTracks()[0]);
       setIsScreenSharing(false);
-
-      const sender = peerConnection.current?.getSenders().find((s) => s.track?.kind === "video");
-      sender?.replaceTrack(stream.getVideoTracks()[0]);
     } else {
-      // Start screen sharing
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         screenStreamRef.current = screenStream;
-        setLocalStreams((prevStreams) => [...prevStreams, screenStream]); // Add screen sharing stream
-        setIsScreenSharing(true);
+        setLocalStream(screenStream);
 
         const sender = peerConnection.current?.getSenders().find((s) => s.track?.kind === "video");
         sender?.replaceTrack(screenStream.getVideoTracks()[0]);
 
-        screenStream.getVideoTracks()[0].onended = () => {
-          toggleScreenSharing(); // Stop screen sharing if user manually stops it
-        };
+        screenStream.getVideoTracks()[0].onended = () => toggleScreenSharing();
+        setIsScreenSharing(true);
       } catch (error) {
-        console.error("Error starting screen sharing:", error);
+        console.error("❌ Error Starting Screen Sharing:", error);
       }
     }
   };
 
-  // Create an offer
-  const createOffer = async () => {
-    if (!peerConnection.current) return;
-  
-    try {
-      // Ensure the connection is not in the stable state before creating a new offer
-      if (peerConnection.current.signalingState !== "stable") {
-        await peerConnection.current.setLocalDescription(await peerConnection.current.createOffer());
+  // **New Function: Toggle Microphone**
+  const toggleMic = () => {
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled; // Toggle audio track
+        setIsMicOn(audioTrack.enabled); // Update state
+        console.log(`🎤 Microphone ${audioTrack.enabled ? "Enabled" : "Muted"}`);
       }
-  
-      const offer = await peerConnection.current.createOffer();
-      await peerConnection.current.setLocalDescription(offer);
-      setEncodedOffer(base64Encode(JSON.stringify(offer)));
-  
-      console.log("New Offer Created: ", offer);
-    } catch (error) {
-      console.error("Error creating offer: ", error);
     }
   };
 
-  // Accept the offer from the remote peer
-  const acceptOffer = async (encodedOffer: string) => {
-    if (!peerConnection.current) return;
-  
-    // Ensure the connection is in the correct state before setting the remote description
-    if (peerConnection.current.signalingState === "stable") {
-      const offerDesc = new RTCSessionDescription(JSON.parse(base64Decode(encodedOffer)));
-      await peerConnection.current.setRemoteDescription(offerDesc);
-  
-      const answer = await peerConnection.current.createAnswer();
-      await peerConnection.current.setLocalDescription(answer);
-      setEncodedAnswer(base64Encode(JSON.stringify(answer)));
-    } else {
-      console.error("PeerConnection is not in a stable state to accept offer.");
-    }
-  };
-
-  // Submit the answer to the remote peer
-  const submitAnswer = async (encodedAnswer: string) => {
-    if (!peerConnection.current) return;
-    const answerDesc = new RTCSessionDescription(JSON.parse(base64Decode(encodedAnswer)));
-    await peerConnection.current.setRemoteDescription(answerDesc);
-  };
-
-  // End the call
   const endCall = () => {
-    peerConnection.current?.close();
-    localStreams.forEach((stream) => {
-      stream.getTracks().forEach((track) => track.stop());
-    });
-    setLocalStreams([]); // Clear local streams
-    setRemoteStreams([]); // Clear remote streams
+    if (peerConnection.current) {
+      peerConnection.current.close();
+      peerConnection.current = null;
+    }
+
+    localStream?.getTracks().forEach((track) => track.stop());
+    screenStreamRef.current?.getTracks().forEach((track) => track.stop());
+    setLocalStream(null);
+    setRemoteStream(null);
+    setIsScreenSharing(false);
+    setIsCallActive(false);
+    console.log("📴 Call Ended.");
   };
 
   return {
     startCall,
     createOffer,
-    submitAnswer,
     acceptOffer,
-    toggleCamera,
-    toggleMic,
+    submitAnswer,
     toggleScreenSharing,
+    toggleMic, // Added mute functionality
     endCall,
-    localStreams,
-    remoteStreams,
+    localStream,
+    remoteStream,
     encodedOffer,
     encodedAnswer,
-    isCameraOn,
-    isMicOn,
     isScreenSharing,
+    isMicOn, // Mic status
+    isCallActive,
   };
 }
