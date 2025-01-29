@@ -11,7 +11,7 @@ export default function Home() {
     submitAnswer,
     toggleScreenSharing,
     toggleMic, 
-  
+    toggleRemoteMic,
     sendMessage,
     addIceCandidate,
     localStream,
@@ -20,6 +20,7 @@ export default function Home() {
     encodedAnswer,
     isScreenSharing,
     isMicOn, 
+    isRemoteMicOn,
     isCallActive,
     messages,
     iceCandidates,
@@ -58,7 +59,7 @@ const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
         {isCallActive && <button onClick={() => submitAnswer(answerText)} className="px-4 py-2 bg-pink-500 rounded">Submit Answer</button>}
         {isCallActive && <button onClick={toggleScreenSharing} className="px-4 py-2 bg-orange-500 rounded">{isScreenSharing ? "Stop Sharing" : "Share Screen"}</button>}
         {isCallActive && <button onClick={toggleMic} className="px-4 py-2 bg-yellow-500 rounded">{isMicOn ? "Mute Mic" : "Unmute Mic"}</button>}
-              </div>
+        {isCallActive && <button onClick={toggleRemoteMic} className="px-4 py-2 bg-red-500 rounded">{isRemoteMicOn ? "Mute Remote Mic" : "Unmute Remote Mic"}</button>}      </div>
       
       {isCallActive && (
         <div className="flex flex-col items-center space-y-4 w-full max-w-lg">

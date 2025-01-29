@@ -12,12 +12,16 @@ export default function useWebRTC() {
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const dataChannel = useRef<RTCDataChannel | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
-
+  const [isRemoteMicOn, setIsRemoteMicOn] = useState<boolean>(true);
   const base64Encode = (data: string) => btoa(unescape(encodeURIComponent(data)));
   const base64Decode = (data: string) => decodeURIComponent(escape(atob(data)));
 
   const startCall = async () => {
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("getUserMedia is not supported in this browser.");
+      }
+  
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setLocalStream(stream);
       setIsCallActive(true);
@@ -131,7 +135,7 @@ export default function useWebRTC() {
       }
     }
   };
-
+  // Toggle the local microphone (mute/unmute)
   const toggleMic = () => {
     if (localStream) {
       const audioTrack = localStream.getAudioTracks()[0];
@@ -142,6 +146,16 @@ export default function useWebRTC() {
     }
   };
 
+  // Toggle the remote microphone (mute/unmute)
+  const toggleRemoteMic = () => {
+    if (remoteStream) {
+      const audioTrack = remoteStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsRemoteMicOn(audioTrack.enabled);
+      }
+    }
+  };
   return {
     startCall,
     createOffer,
@@ -150,13 +164,14 @@ export default function useWebRTC() {
     sendMessage,
     addIceCandidate,
     toggleScreenSharing,
-    toggleMic,
+    toggleMic, toggleRemoteMic,
     localStream,
     remoteStream,
     encodedOffer,
     encodedAnswer,
     isScreenSharing,
     isMicOn,
+    isRemoteMicOn,
     isCallActive,
     messages,
     iceCandidates,
