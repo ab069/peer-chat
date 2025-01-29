@@ -1,8 +1,185 @@
-"use client";
-
 import { useEffect, useRef, useState } from "react";
-import useWebRTC from "./hooks/useWebRTC";
 
+// WebRTC hook (useWebRTC)
+const useWebRTC = () => {
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [encodedOffer, setEncodedOffer] = useState<string | null>(null);
+  const [encodedAnswer, setEncodedAnswer] = useState<string | null>(null);
+  const [offerText, setOfferText] = useState<string>("");
+  const [answerText, setAnswerText] = useState<string>("");
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [isMicOn, setIsMicOn] = useState(true);
+  const peerConnection = useRef<RTCPeerConnection | null>(null);
+  const [iceCandidates, setIceCandidates] = useState<RTCIceCandidate[]>([]);
+
+  // Media constraints for video and audio
+  const mediaConstraints = {
+    video: true,
+    audio: true,
+  };
+
+  useEffect(() => {
+    // Get local media stream
+    const getLocalStream = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+        setLocalStream(stream);
+      } catch (err) {
+        console.error("Error accessing media devices.", err);
+      }
+    };
+    getLocalStream();
+  }, []);
+
+  const startCall = () => {
+    setIsCallActive(true);
+    createPeerConnection();
+  };
+
+  const createPeerConnection = () => {
+    const pc = new RTCPeerConnection();
+  
+    // Add ICE candidate event listener
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        setIceCandidates((prevCandidates) => [
+          ...prevCandidates.filter((candidate) => candidate !== null), // Filter out null candidates
+          event.candidate, // Add valid ICE candidate
+        ]);
+      }
+    };
+  
+    // Add remote stream event listener
+    pc.ontrack = (event) => {
+      setRemoteStream(event.streams[0]);
+    };
+  
+    if (localStream) {
+      localStream.getTracks().forEach((track) => {
+        pc.addTrack(track, localStream);
+      });
+    }
+  
+    peerConnection.current = pc;
+  };
+  
+
+  const createOffer = async () => {
+    if (peerConnection.current) {
+      try {
+        const offer = await peerConnection.current.createOffer();
+        await peerConnection.current.setLocalDescription(offer);
+        setEncodedOffer(JSON.stringify(offer));
+        setOfferText(JSON.stringify(offer));
+        console.log("Offer created:", offer);
+      } catch (error) {
+        console.error("Error creating offer:", error);
+      }
+    }
+  };
+
+  const acceptOffer = async (offer: string) => {
+    if (peerConnection.current) {
+      try {
+        const offerObj = JSON.parse(offer);
+        await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offerObj));
+
+        const answer = await peerConnection.current.createAnswer();
+        await peerConnection.current.setLocalDescription(answer);
+        setEncodedAnswer(JSON.stringify(answer));
+        setAnswerText(JSON.stringify(answer));
+        console.log("Answer created:", answer);
+      } catch (error) {
+        console.error("Error accepting offer:", error);
+      }
+    }
+  };
+
+  const submitAnswer = async (answer: string) => {
+    if (peerConnection.current) {
+      try {
+        const answerObj = JSON.parse(answer);
+        await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answerObj));
+        console.log("Answer submitted:", answer);
+      } catch (error) {
+        console.error("Error submitting answer:", error);
+      }
+    }
+  };
+
+  const toggleScreenSharing = async () => {
+    if (isScreenSharing) {
+      // Stop screen sharing
+      const tracks = localStream?.getTracks();
+      tracks?.forEach((track) => {
+        if (track.kind === "video") {
+          track.stop();
+        }
+      });
+      setIsScreenSharing(false);
+    } else {
+      // Start screen sharing
+      try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        setLocalStream(stream);
+        stream.getTracks().forEach((track) => {
+          if (peerConnection.current) {
+            peerConnection.current.addTrack(track, stream);
+          }
+        });
+        setIsScreenSharing(true);
+      } catch (err) {
+        console.error("Error starting screen sharing", err);
+      }
+    }
+  };
+
+  const toggleMic = () => {
+    if (localStream) {
+      localStream.getTracks().forEach((track) => {
+        if (track.kind === "audio") {
+          track.enabled = !track.enabled;
+          setIsMicOn(track.enabled);
+        }
+      });
+    }
+  };
+
+  const endCall = () => {
+    if (peerConnection.current) {
+      peerConnection.current.close();
+    }
+    setIsCallActive(false);
+    setLocalStream(null);
+    setRemoteStream(null);
+  };
+
+  return {
+    startCall,
+    createOffer,
+    acceptOffer,
+    submitAnswer,
+    toggleScreenSharing,
+    toggleMic,
+    endCall,
+    localStream,
+    remoteStream,
+    encodedOffer,
+    encodedAnswer,
+    iceCandidates,
+    isScreenSharing,
+    isMicOn,
+    isCallActive,
+    offerText,
+    setOfferText,
+    answerText,
+    setAnswerText,
+  };
+};
+
+// Main Component
 export default function Home() {
   const {
     startCall,
@@ -10,19 +187,21 @@ export default function Home() {
     acceptOffer,
     submitAnswer,
     toggleScreenSharing,
-    toggleMic, // Mute functionality
+    toggleMic,
     endCall,
     localStream,
     remoteStream,
     encodedOffer,
     encodedAnswer,
+    iceCandidates,
     isScreenSharing,
-    isMicOn, // Mic status
+    isMicOn,
     isCallActive,
+    offerText,
+    setOfferText,
+    answerText,
+    setAnswerText,
   } = useWebRTC();
-
-  const [offerText, setOfferText] = useState<string>("");
-  const [answerText, setAnswerText] = useState<string>("");
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -85,6 +264,16 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* ICE Candidates */}
+      <div className="mt-4">
+        <h3 className="text-lg font-semibold">ICE Candidates:</h3>
+        <ul>
+          {iceCandidates.map((candidate, index) => (
+            <li key={index} className="text-sm text-gray-400">{JSON.stringify(candidate)}</li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
