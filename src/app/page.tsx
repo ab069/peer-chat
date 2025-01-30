@@ -94,7 +94,10 @@ const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
            <button onClick={() => setShowSignaling(!showSignaling)} className="px-4 py-2 bg-purple-600 rounded">
             {showSignaling ? "Hide Signaling" : "Show Signaling"}
           </button>
-            <button onClick={createOffer} className="px-4 py-2 bg-blue-500 rounded">Create Offer</button>
+            <button onClick={() => {
+  createOffer();
+  setShowSignaling(!showSignaling);
+}}className="px-4 py-2 bg-blue-500 rounded">Create Offer</button>
             <button onClick={() => acceptOffer(offerText)} className="px-4 py-2 bg-purple-500 rounded">Accept Offer</button>
             <button onClick={() => submitAnswer(answerText)} className="px-4 py-2 bg-pink-500 rounded">Submit Answer</button>
             <button onClick={toggleScreenSharing} className="px-4 py-2 bg-orange-500 rounded">
@@ -111,44 +114,43 @@ const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
         )}
       </div>
   
-      {/* Main Layout - 3 Columns */}
-      {isCallActive && (
-        <div className="grid grid-cols-3 gap-6 w-full max-w-6xl">
-          
-          {/* Column 1: Video Streams */}
-          <div className="flex flex-col items-center space-y-4">
-            <h2 className="text-xl font-semibold">Video Streams</h2>
-            <div className="flex flex-col items-center">
-              <label className="text-sm font-semibold mb-1">Local Stream:</label>
-              <video ref={localVideoRef} autoPlay muted playsInline className="border w-64 h-48 rounded-lg" />
-            </div>
-            <div className="flex flex-col items-center">
-              <label className="text-sm font-semibold mb-1">Remote Stream:</label>
-              <video ref={remoteVideoRef} autoPlay playsInline className="border w-64 h-48 rounded-lg" />
-            </div>
+     {/* Dynamic Layout: 2 Columns (50/50) or 3 Columns (33/33/33) */}
+     {isCallActive && (
+      <div className={`grid ${showSignaling ? "grid-cols-3" : "grid-cols-2"} gap-6 w-full max-w-6xl`}>
+        
+        {/* Video Streams */}
+        <div className="flex flex-col items-center space-y-4">
+          <h2 className="text-xl font-semibold">Video Streams</h2>
+          <div className="flex flex-col items-center">
+            <label className="text-sm font-semibold mb-1">Local Stream:</label>
+            <video ref={localVideoRef} autoPlay muted playsInline className="border w-full max-w-md h-auto rounded-lg" />
           </div>
-  
-          {/* Column 2: Chat Box */}
-          <div className="flex flex-col items-center w-full">
-            <h2 className="text-xl font-semibold">Chat</h2>
-            <div className="h-64 w-full bg-gray-800 p-2 rounded mb-2 overflow-y-auto">
-              {chatMessages.map((msg, index) => (
-                <p key={index} className="text-sm">{msg}</p>
-              ))}
-            </div>
-            <input
-              type="text"
-              value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
-              placeholder="Type a message"
-              className="w-full p-2 bg-gray-800 rounded mb-2"
-            />
-            <button onClick={() => sendMessage(messageText)} className="px-4 py-2 bg-blue-500 rounded">Send</button>
+          <div className="flex flex-col items-center">
+            <label className="text-sm font-semibold mb-1">Remote Stream:</label>
+            <video ref={remoteVideoRef} autoPlay playsInline className="border w-full max-w-md h-auto rounded-lg" />
           </div>
-  
-          {/* Column 3: Offer, Answer & ICE Candidates */}
+        </div>
 
-          {showSignaling &&(
+        {/* Chat Box */}
+        <div className="flex flex-col items-center w-full">
+          <h2 className="text-xl font-semibold">Chat</h2>
+          <div className="h-64 w-full bg-gray-800 p-2 rounded mb-2 overflow-y-auto">
+            {chatMessages.map((msg, index) => (
+              <p key={index} className="text-sm">{msg}</p>
+            ))}
+          </div>
+          <input
+            type="text"
+            value={messageText}
+            onChange={(e) => setMessageText(e.target.value)}
+            placeholder="Type a message"
+            className="w-full p-2 bg-gray-800 rounded mb-2"
+          />
+          <button onClick={() => sendMessage(messageText)} className="px-4 py-2 bg-blue-500 rounded">Send</button>
+        </div>
+
+        {/* Signaling Section (Hidden by Default) */}
+        {showSignaling && (
           <div className="flex flex-col items-center space-y-4 w-full">
             <h2 className="text-xl font-semibold">Signaling</h2>
             
@@ -165,7 +167,7 @@ const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
               <button onClick={() => handleCopy(encodedAnswer)} className="ml-2 px-4 py-2 bg-gray-600 rounded">Copy</button>
             </div>
             <textarea className="w-full p-2 bg-gray-800 rounded" value={answerText} onChange={(e) => setAnswerText(e.target.value)} placeholder="Paste Answer Here" />
-  
+
             {/* ICE Candidates */}
             <h2 className="text-xl font-semibold">ICE Candidates</h2>
             <div className="h-40 overflow-y-auto bg-gray-800 p-2 rounded mb-2 space-y-2">
@@ -180,9 +182,8 @@ const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
             <button onClick={() => addIceCandidate(iceText)} className="px-4 py-2 bg-purple-500 rounded">Add ICE</button>
           </div>
         )}
-        </div>
-      )}
-    </div>
-  );
-  
+      </div>
+    )}
+  </div>
+);
 }
