@@ -55,7 +55,7 @@ const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const iceList = useMemo(() => iceCandidates, [iceCandidates]);
 
   // Callbacks for actions
-  const handleCopy = useCallback((text: any) => {
+  const handleCopy = useCallback((text: string) => {
     if (!text.trim()) {
       setAlertMessage("Nothing to copy!");
       setTimeout(() => {
