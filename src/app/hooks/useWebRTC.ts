@@ -59,7 +59,8 @@ export default function useWebRTC() {
     try {
       const candidate = JSON.parse(base64Decode(encodedCandidate));
       await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
-      console.log("✅ ICE Candidate Added:", candidate);
+      console.log("✅ ICE Candidate after offer:", candidate);
+
     } catch (error) {
       console.error("❌ Error Adding ICE Candidate:", error);
     }
@@ -69,6 +70,12 @@ export default function useWebRTC() {
     if (!peerConnection.current) return;
     try {
       const offer = await peerConnection.current.createOffer();
+     
+      console.log("🔄  offer Generated:", offer);
+
+
+
+
       await peerConnection.current.setLocalDescription(offer);
       setEncodedOffer(base64Encode(JSON.stringify(offer)));
     } catch (error) {
