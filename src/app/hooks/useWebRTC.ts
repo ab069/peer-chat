@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
 export default function useWebRTC() {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -9,19 +10,19 @@ export default function useWebRTC() {
   const [isMicOn, setIsMicOn] = useState(true);
   const [messages, setMessages] = useState<string[]>([]);
   const [iceCandidates, setIceCandidates] = useState<string[]>([]);
+  const [isRemoteMicOn, setIsRemoteMicOn] = useState(true);
+
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const dataChannel = useRef<RTCDataChannel | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
-  const [isRemoteMicOn, setIsRemoteMicOn] = useState<boolean>(true);
-  const base64Encode = (data: string) => btoa(unescape(encodeURIComponent(data)));
-  const base64Decode = (data: string) => decodeURIComponent(escape(atob(data)));
 
-  const startCall = async () => {
+  // Utility functions for encoding/decoding data
+  const base64Encode = useCallback((data: string) => btoa(unescape(encodeURIComponent(data))), []);
+  const base64Decode = useCallback((data: string) => decodeURIComponent(escape(atob(data))), []);
+
+  // Function to start a WebRTC call
+  const startCall = useCallback(async () => {
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("getUserMedia is not supported in this browser.");
-      }
-  
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setLocalStream(stream);
       setIsCallActive(true);
@@ -31,11 +32,7 @@ export default function useWebRTC() {
       });
 
       dataChannel.current = peerConnection.current.createDataChannel("chat");
-      dataChannel.current.onmessage = (event) => {
-        setMessages((prev) => [...prev, `Peer: ${event.data}`]);
-      };
-      dataChannel.current.onopen = () => console.log("📡 Data Channel Opened");
-      dataChannel.current.onclose = () => console.log("📴 Data Channel Closed");
+      dataChannel.current.onmessage = (event) => setMessages((prev) => [...prev, `Peer: ${event.data}`]);
 
       stream.getTracks().forEach((track) => peerConnection.current?.addTrack(track, stream));
 
@@ -45,66 +42,59 @@ export default function useWebRTC() {
 
       peerConnection.current.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log("🔄 ICE Candidate Generated:", event.candidate);
           setIceCandidates((prev) => [...prev, base64Encode(JSON.stringify(event.candidate))]);
         }
       };
     } catch (error) {
       console.error("❌ Error Starting Call:", error);
     }
-  };
+  }, [base64Encode]);
 
-  const addIceCandidate = async (encodedCandidate: string) => {
+  // Function to add ICE candidate
+  const addIceCandidate = useCallback(async (encodedCandidate: string) => {
     if (!peerConnection.current) return;
     try {
       const candidate = JSON.parse(base64Decode(encodedCandidate));
       await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
-      console.log("✅ ICE Candidate after offer:", candidate);
-
     } catch (error) {
       console.error("❌ Error Adding ICE Candidate:", error);
     }
-  };
+  }, [base64Decode]);
 
-  const createOffer = async () => {
+  // Function to create an offer
+  const createOffer = useCallback(async () => {
     if (!peerConnection.current) return;
     try {
       const offer = await peerConnection.current.createOffer();
-     
-      console.log("🔄  offer Generated:", offer);
-
-
-
-
       await peerConnection.current.setLocalDescription(offer);
       setEncodedOffer(base64Encode(JSON.stringify(offer)));
     } catch (error) {
       console.error("❌ Error Creating Offer:", error);
     }
-  };
+  }, [base64Encode]);
 
-  const acceptOffer = async (encodedOffer: string) => {
+  // Function to accept an offer
+  const acceptOffer = useCallback(async (encodedOffer: string) => {
     if (!peerConnection.current) return;
     try {
       const offer = JSON.parse(base64Decode(encodedOffer));
       await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
-      
+
       peerConnection.current.ondatachannel = (event) => {
         dataChannel.current = event.channel;
-        dataChannel.current.onmessage = (event) => {
-          setMessages((prev) => [...prev, `Peer: ${event.data}`]);
-        };
+        dataChannel.current.onmessage = (event) => setMessages((prev) => [...prev, `Peer: ${event.data}`]);
       };
-      
+
       const answer = await peerConnection.current.createAnswer();
       await peerConnection.current.setLocalDescription(answer);
       setEncodedAnswer(base64Encode(JSON.stringify(answer)));
     } catch (error) {
       console.error("❌ Error Accepting Offer:", error);
     }
-  };
+  }, [base64Encode, base64Decode]);
 
-  const submitAnswer = async (encodedAnswer: string) => {
+  // Function to submit an answer
+  const submitAnswer = useCallback(async (encodedAnswer: string) => {
     if (!peerConnection.current) return;
     try {
       const answer = JSON.parse(base64Decode(encodedAnswer));
@@ -112,28 +102,30 @@ export default function useWebRTC() {
     } catch (error) {
       console.error("❌ Error Submitting Answer:", error);
     }
-  };
+  }, [base64Decode]);
 
-  const sendMessage = (message: string) => {
-    if (dataChannel.current && dataChannel.current.readyState === "open") {
+  // Function to send a message over data channel
+  const sendMessage = useCallback((message: string) => {
+    if (dataChannel.current?.readyState === "open") {
       dataChannel.current.send(message);
       setMessages((prev) => [...prev, `You: ${message}`]);
     }
-  };
+  }, []);
 
-  const toggleScreenSharing = async () => {
+  // Function to toggle screen sharing
+  const toggleScreenSharing = useCallback(async () => {
     if (isScreenSharing) {
-      screenStreamRef.current?.getTracks().forEach(track => track.stop());
+      screenStreamRef.current?.getTracks().forEach((track) => track.stop());
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setLocalStream(stream);
-      peerConnection.current?.getSenders().find(s => s.track?.kind === "video")?.replaceTrack(stream.getVideoTracks()[0]);
+      peerConnection.current?.getSenders().find((s) => s.track?.kind === "video")?.replaceTrack(stream.getVideoTracks()[0]);
       setIsScreenSharing(false);
     } else {
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         screenStreamRef.current = screenStream;
         setLocalStream(screenStream);
-        const sender = peerConnection.current?.getSenders().find(s => s.track?.kind === "video");
+        const sender = peerConnection.current?.getSenders().find((s) => s.track?.kind === "video");
         sender?.replaceTrack(screenStream.getVideoTracks()[0]);
         screenStream.getVideoTracks()[0].onended = () => toggleScreenSharing();
         setIsScreenSharing(true);
@@ -141,9 +133,10 @@ export default function useWebRTC() {
         console.error("❌ Error Starting Screen Sharing:", error);
       }
     }
-  };
-  // Toggle the local microphone (mute/unmute)
-  const toggleMic = () => {
+  }, [isScreenSharing]);
+
+  // Function to toggle microphone
+  const toggleMic = useCallback(() => {
     if (localStream) {
       const audioTrack = localStream.getAudioTracks()[0];
       if (audioTrack) {
@@ -151,10 +144,10 @@ export default function useWebRTC() {
         setIsMicOn(audioTrack.enabled);
       }
     }
-  };
+  }, [localStream]);
 
-  // Toggle the remote microphone (mute/unmute)
-  const toggleRemoteMic = () => {
+  // Function to toggle remote microphone
+  const toggleRemoteMic = useCallback(() => {
     if (remoteStream) {
       const audioTrack = remoteStream.getAudioTracks()[0];
       if (audioTrack) {
@@ -162,7 +155,27 @@ export default function useWebRTC() {
         setIsRemoteMicOn(audioTrack.enabled);
       }
     }
-  };
+  }, [remoteStream]);
+
+  // Function to end call
+  const endCall = useCallback(() => {
+    peerConnection.current?.close();
+    peerConnection.current = null;
+    dataChannel.current = null;
+
+    localStream?.getTracks().forEach((track) => track.stop());
+    remoteStream?.getTracks().forEach((track) => track.stop());
+
+    setLocalStream(null);
+    setRemoteStream(null);
+    setIsCallActive(false);
+    setEncodedOffer(null);
+    setEncodedAnswer(null);
+    setIsScreenSharing(false);
+    setMessages([]);
+    setIceCandidates([]);
+  }, [localStream, remoteStream]);
+
   return {
     startCall,
     createOffer,
@@ -171,7 +184,9 @@ export default function useWebRTC() {
     sendMessage,
     addIceCandidate,
     toggleScreenSharing,
-    toggleMic, toggleRemoteMic,
+    toggleMic,
+    toggleRemoteMic,
+    endCall,
     localStream,
     remoteStream,
     encodedOffer,
