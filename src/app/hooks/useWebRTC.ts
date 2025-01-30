@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 export default function useWebRTC() {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
