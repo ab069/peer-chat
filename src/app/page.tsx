@@ -55,24 +55,21 @@ const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const iceList = useMemo(() => iceCandidates, [iceCandidates]);
 
   // Callbacks for actions
-  const handleCopy = useCallback((text: string) => {
+  const handleCopy = useCallback((text: string): void => {
     if (!text.trim()) {
       setAlertMessage("Nothing to copy!");
-      setTimeout(() => {
-        setAlertMessage(null);
-      }, 2000);
+      setTimeout(() => setAlertMessage(null), 2000);
       return;
     }
-
+  
     navigator.clipboard.writeText(text)
       .then(() => {
         setAlertMessage("Copied to clipboard!");
-        setTimeout(() => {
-          setAlertMessage(null);
-        }, 2000);
+        setTimeout(() => setAlertMessage(null), 2000);
       })
-      .catch((err) => console.error("Failed to copy text:", err));
+      .catch((err: Error) => console.error("Failed to copy text:", err));
   }, []);
+  
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-6">
       <h1 className="text-3xl font-bold mb-6">WebRTC Chat & Video Call</h1>
@@ -157,14 +154,14 @@ const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
             {/* Offer */}
             <div className="flex w-full">
               <textarea className="w-full p-2 bg-gray-800 rounded" value={encodedOffer || ""} readOnly />
-              <button onClick={() => handleCopy(encodedOffer)} className="ml-2 px-4 py-2 bg-gray-600 rounded">Copy</button>
+              <button onClick={() => handleCopy(encodedOffer!)} className="ml-2 px-4 py-2 bg-gray-600 rounded">Copy</button>
             </div>
             <textarea className="w-full p-2 bg-gray-800 rounded" value={offerText} onChange={(e) => setOfferText(e.target.value)} placeholder="Paste Offer Here" />
             
             {/* Answer */}
             <div className="flex w-full">
               <textarea className="w-full p-2 bg-gray-800 rounded" value={encodedAnswer || ""} readOnly />
-              <button onClick={() => handleCopy(encodedAnswer)} className="ml-2 px-4 py-2 bg-gray-600 rounded">Copy</button>
+              <button onClick={() => handleCopy(encodedAnswer!)} className="ml-2 px-4 py-2 bg-gray-600 rounded">Copy</button>
             </div>
             <textarea className="w-full p-2 bg-gray-800 rounded" value={answerText} onChange={(e) => setAnswerText(e.target.value)} placeholder="Paste Answer Here" />
 
