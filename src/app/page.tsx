@@ -96,12 +96,12 @@ const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
       <ul className="text-sm space-y-2 text-left">
         <li className="font-bold text-green-400">For User 1 (Offer Creator):</li>
         <li>1. Click the <span className="font-semibold">Start Call</span> button to start the call.</li>
-        <li>2. Click the <span className="font-semibold">"Generate Offer"</span> button to create an offer.</li>
+        <li>2. Click the <span className="font-semibold">Generate Offer</span> button to create an offer.</li>
         <li>3. Copy the generated offer and share it with <span className="font-semibold">User 2</span>.</li>
         <li>4. Wait for <span className="font-semibold">User 2</span> to send back an answer.</li>
         <li>5. Paste the received answer and click <span className="font-semibold">Accept Answer</span>.</li>
         <li>6. Copy your ICE candidate and send it to <span className="font-semibold">User 2</span>.</li>
-        <li>7. Paste the ICE candidate received from <span className="font-semibold">User 2</span> and click <span className="font-semibold">"Add ICE"</span>.</li>
+        <li>7. Paste the ICE candidate received from <span className="font-semibold">User 2</span> and click <span className="font-semibold">Add ICE</span>.</li>
       </ul>
 
       {/* Instructions for User 2 (Offer Receiver) */}
@@ -109,10 +109,10 @@ const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
         <li className="font-bold text-blue-400">For User 2 (Offer Receiver):</li>
         <li>1. Click the <span className="font-semibold">Start Call</span> button to start the call.</li>
         <li>2. Paste the offer received from <span className="font-semibold">User 1</span>.</li>
-        <li>3. Click <span className="font-semibold">"Accept Offer"</span> to generate an answer.</li>
+        <li>3. Click <span className="font-semibold">Accept Offer</span> to generate an answer.</li>
         <li>4. Copy the generated answer and send it back to <span className="font-semibold">User 1</span>.</li>
         <li>5. Copy your ICE candidate and send it to <span className="font-semibold">User 1</span>.</li>
-        <li>6. Paste the ICE candidate received from <span className="font-semibold">User 1</span> and click <span className="font-semibold">"Add ICE"</span>.</li>
+        <li>6. Paste the ICE candidate received from <span className="font-semibold">User 1</span> and click <span className="font-semibold">Add ICE</span>.</li>
         <li>7. Once ICE candidates are exchanged, your connection is established. 🎉</li>
       </ul>
     </div>
