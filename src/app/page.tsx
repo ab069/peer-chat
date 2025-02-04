@@ -74,18 +74,50 @@ const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-6">
       <h1 className="text-3xl font-bold mb-6">WebRTC Chat & Video Call</h1>
   
-      {/* Buttons */}
       <div className="flex space-x-4 mb-6">
-        {alertMessage && (
-          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-green-500 text-white p-2 rounded shadow-md">
-            {alertMessage}
-          </div>
-        )}
-        {!isCallActive && (
-          <button onClick={startCall} className="px-4 py-2 bg-green-500 rounded">
-            Start Call
-          </button>
-        )}
+  {alertMessage && (
+    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-green-500 text-white p-2 rounded shadow-md">
+      {alertMessage}
+    </div>
+  )}
+  
+  {!isCallActive && (
+    <button onClick={startCall} className="px-4 py-2 bg-green-500 rounded">
+      Start Call
+    </button>
+  )}
+
+  {!isCallActive && (
+    <div className="bg-gray-800 p-4 rounded-md shadow-lg max-w-md text-center">
+      <h2 className="text-xl font-semibold mb-3">How to Use</h2>
+      <p className="text-sm text-gray-300 mb-2">Follow these steps to establish a WebRTC connection:</p>
+
+      {/* Instructions for User 1 (Offer Creator) */}
+      <ul className="text-sm space-y-2 text-left">
+        <li className="font-bold text-green-400">For User 1 (Offer Creator):</li>
+        <li>1. Click the <span className="font-semibold">"Start Call"</span> button to start the call.</li>
+        <li>2. Click the <span className="font-semibold">"Generate Offer"</span> button to create an offer.</li>
+        <li>3. Copy the generated offer and share it with <span className="font-semibold">User 2</span>.</li>
+        <li>4. Wait for <span className="font-semibold">User 2</span> to send back an answer.</li>
+        <li>5. Paste the received answer and click <span className="font-semibold">"Accept Answer"</span>.</li>
+        <li>6. Copy your ICE candidate and send it to <span className="font-semibold">User 2</span>.</li>
+        <li>7. Paste the ICE candidate received from <span className="font-semibold">User 2</span> and click <span className="font-semibold">"Add ICE"</span>.</li>
+      </ul>
+
+      {/* Instructions for User 2 (Offer Receiver) */}
+      <ul className="text-sm space-y-2 text-left mt-4">
+        <li className="font-bold text-blue-400">For User 2 (Offer Receiver):</li>
+        <li>1. Click the <span className="font-semibold">"Start Call"</span> button to start the call.</li>
+        <li>2. Paste the offer received from <span className="font-semibold">User 1</span>.</li>
+        <li>3. Click <span className="font-semibold">"Accept Offer"</span> to generate an answer.</li>
+        <li>4. Copy the generated answer and send it back to <span className="font-semibold">User 1</span>.</li>
+        <li>5. Copy your ICE candidate and send it to <span className="font-semibold">User 1</span>.</li>
+        <li>6. Paste the ICE candidate received from <span className="font-semibold">User 1</span> and click <span className="font-semibold">"Add ICE"</span>.</li>
+        <li>7. Once ICE candidates are exchanged, your connection is established. 🎉</li>
+      </ul>
+    </div>
+  )}
+
         {isCallActive && (
           <>
            <button onClick={() => setShowSignaling(!showSignaling)} className="px-4 py-2 bg-purple-600 rounded">
